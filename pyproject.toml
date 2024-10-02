@@ -1,0 +1,23 @@
+[project]
+name = "rockbox-ipod-sync"
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+]
+description = "Just some silly utils for syncing an iPod with Rockbox, transcoding, converting to non-interlaced album art."
+dependencies = [
+    "mutagen",
+    "wand",
+    "ffmpeg-python",
+    "tqdm",
+]
+dynamic = ["version"]
+license.file = "LICENSE"
+readme = "README.md"
+requires-python = ">=3.10"
+
+[project.urls]
+GitHub = "https://github.com/evalott100/RockBoxIpodSync"
+
+[[project.authors]]
+email = "evalott100@gmail.com"
+name = "Eva Lott"

@@ -6,6 +6,7 @@ It will also format jpg/png within the directory but I don't store album art tha
 png will be converted to jpg.
 """
 
+import argparse
 import logging
 import os
 from mutagen.flac import FLAC, Picture
@@ -17,15 +18,16 @@ from wand.image import Image
 from itertools import count
 
 
-IGNORE_DIRECTORY_NAMES = set() # Optional
+IGNORE_DIRECTORY_NAMES = set()  # Optional
 
 found_albums = set()
 converted_images_count = count()
 
+
 def format_image_to_jpg_no_interlacing(
     image_path: Path | None = None,
     image_bytes: bytes | None = None,
-    delete_old_png = True
+    delete_old_png=True,
 ) -> bytes:
     """
     Either takes a `image_path` of an image to remove interlacing of or `image_bytes`
@@ -35,14 +37,14 @@ def format_image_to_jpg_no_interlacing(
 
     if (image_path is None and image_bytes is None) or (image_path and image_bytes):
         raise RuntimeError("Pass a `image_path` or `image_bytes` not both")
-    
+
     if image_path and image_path.suffix not in (".jpg", ".png"):
         raise RuntimeError(f"Unexpected image file format `{image_path.suffix}`")
-    
+
     wand_image = Image(filename=image_path) if image_path else Image(blob=image_bytes)
     wand_image.interlace_scheme = "no"
     wand_image.format = "jpg"
-    
+
     next(converted_images_count)
 
     if image_path:
@@ -50,9 +52,9 @@ def format_image_to_jpg_no_interlacing(
         wand_image.save(filename=jpg_image_path)
         if delete_old_png and image_path != jpg_image_path:
             os.remove(image_path)
-    
+
     return wand_image.make_blob()
-    
+
 
 def format_mp3(image_path: Path):
     try:
@@ -65,8 +67,9 @@ def format_mp3(image_path: Path):
         image_bytes=tag.getall("APIC")[0].data
     )
     tag.delall("APIC")
-    tag.add(APIC(3, 'image/jpeg', 3, u'cover', data=new_image_bytes))
+    tag.add(APIC(3, "image/jpeg", 3, "cover", data=new_image_bytes))
     tag.save()
+
 
 def format_flac(image_path: Path):
     tag = FLAC(image_path)
@@ -75,16 +78,15 @@ def format_flac(image_path: Path):
         if picture.type != 3:
             continue
 
-        new_image_bytes = format_image_to_jpg_no_interlacing(
-            image_bytes=picture.data
-        )
+        new_image_bytes = format_image_to_jpg_no_interlacing(image_bytes=picture.data)
         tag.clear_pictures()
         new_picture = Picture()
         new_picture.type = PictureType.COVER_FRONT
-        new_picture.mime = 'image/jpeg'
+        new_picture.mime = "image/jpeg"
         new_picture.data = new_image_bytes
         tag.add_picture(new_picture)
         tag.save(deleteid3=True)
+
 
 def format_m4a(image_path: Path):
     tag = MP4(image_path)
@@ -92,22 +94,20 @@ def format_m4a(image_path: Path):
     # For an m4a I'm not sure but lets err on the safe side.
     new_covr = []
     for image_bytes in tag["covr"]:
-        new_image_bytes = format_image_to_jpg_no_interlacing(
-            image_bytes=image_bytes
-        )
-        new_covr.append(
-            MP4Cover(new_image_bytes, imageformat=MP4Cover.FORMAT_JPEG)
-        )
+        new_image_bytes = format_image_to_jpg_no_interlacing(image_bytes=image_bytes)
+        new_covr.append(MP4Cover(new_image_bytes, imageformat=MP4Cover.FORMAT_JPEG))
     tag["covr"] = new_covr
     tag.save()
+
 
 SUFFIX_FORMATTERS = {
     ".jpg": lambda path: format_image_to_jpg_no_interlacing(image_path=path),
     ".png": lambda path: format_image_to_jpg_no_interlacing(image_path=path),
     ".flac": format_flac,
     ".mp3": format_mp3,
-    ".m4a": format_m4a
+    ".m4a": format_m4a,
 }
+
 
 def format_art(path: Path):
     if path.is_file() and path.suffix in SUFFIX_FORMATTERS:
@@ -120,8 +120,9 @@ def format_art(path: Path):
 
     elif path.is_dir():
         for child in path.iterdir():
-                if child.name not in IGNORE_DIRECTORY_NAMES:
-                    format_art(child)
+            if child.name not in IGNORE_DIRECTORY_NAMES:
+                format_art(child)
+
 
 def main(root_path: Path):
     if not root_path.exists():
@@ -139,3 +140,23 @@ def main(root_path: Path):
     else:
         finished_text = "Didn't find any images to convert."
     logging.debug(f"FINISHED: {finished_text}")
+
+
+if __name__ == "__main__":
+    logging.basicConfig(format="%(message)s", level=logging.DEBUG)
+
+    parser = argparse.ArgumentParser(
+        description="Convert embedded album art to not use interlacing."
+    )
+    parser.add_argument(
+        "path",
+        default=".",
+        type=str,
+        help=(
+            "Either a directory to recursively change songs in, "
+            "or a song/image itself."
+        ),
+    )
+
+    args = parser.parse_args()
+    main(Path(args.path))
