@@ -21,7 +21,6 @@ import tempfile
 
 TMP = Path(tempfile.gettempdir())
 SONG_FORMATS = {".flac", ".mp3", ".m4a"}
-created_directory_cache = set()
 
 
 @dataclass
@@ -159,7 +158,7 @@ class SyncInfo:
             with ThreadPoolExecutor() as executor:
                 if self.convert_art or self.transcode_to_mp3:
                     pbar.set_description_str(
-                        f"Transcoding/Art  : {directory_info.relative_directory} "
+                        f"Transcoding / Converting Art  --| {directory_info.relative_directory} "
                     )
                     futures = [
                         executor.submit(convert_worker, file_to_sync)
@@ -170,7 +169,9 @@ class SyncInfo:
                         pbar.update()
 
                 pbar.set_description_str(
-                    f"Currently Syncing: {directory_info.relative_directory} "
+                    "Currently Syncing "
+                    f"{'------------' if self.convert_art or self.transcode_to_mp3 else ''}"
+                    f"--| {directory_info.relative_directory}"
                 )
                 futures = [
                     executor.submit(copy_worker, file_to_sync)
