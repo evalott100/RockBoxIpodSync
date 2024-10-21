@@ -47,7 +47,7 @@ class SyncInfo:
         self.to_root: Path = to_root
         self.transcode_to_mp3: bool = transcode_to_mp3
         self.convert_art: bool = convert_art
-        self.directories_to_sync: dict[Path:DirectoryToSync] = {}
+        self.directories_to_sync: dict[Path, DirectoryToSync] = {}
         self.files_to_copy: int = 0
         self.files_copied: int = 0
         self.total_size: float = 0.0
@@ -77,12 +77,9 @@ class SyncInfo:
         for sub_from in from_directory.iterdir():
             if sub_from.is_dir():
                 self.calculate_sync(sub_from, to_directory / sub_from.name)
-            elif (
-                sub_from.suffix in SONG_FORMATS
-                and not any(
-                    (to_directory / sub_from.name).with_suffix(suffix).exists()
-                    for suffix in SONG_FORMATS
-                )
+            elif sub_from.suffix in SONG_FORMATS and not any(
+                (to_directory / sub_from.name).with_suffix(suffix).exists()
+                for suffix in SONG_FORMATS
             ):
                 self.add_file_to_sync(sub_from, to_directory)
 
@@ -165,8 +162,8 @@ class SyncInfo:
                         for file_to_sync in directory_info.files_to_sync
                     ]
                     for future in as_completed(futures):
-                        future.result() # Ensure all files are converted before copying
-                        pbar.update()
+                        future.result()  # Ensure all files are converted before copying
+                        pbar.update(n=0)
 
                 pbar.set_description_str(
                     "Currently Syncing "
